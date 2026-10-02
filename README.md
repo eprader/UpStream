@@ -11,6 +11,8 @@
 # Description
 This Projects contains all parts of the UpStream scaling framework. It makes use of domain specific metrics from the Flink application cluster to make a scaling decision using
 [MPC](https://en.wikipedia.org/wiki/Model_predictive_control).
+
+This project is the main contribution of my [Bachelors Thesis](./Bachelor_Thesis___Prader_Emanuel_signed.pdf).
 # Setup
 
 > [!TIP]
@@ -115,7 +117,4 @@ kubectl get secret monitoring-grafana -o jsonpath="{.data.admin-user}" | base64 
 ```
 
 There are 2 dashboards as `.json` files stored in the [helm folder](./helm)
-
-### Event Generation
-To actually have events coming in to the Kafka topics, we need to generate Events.
 
