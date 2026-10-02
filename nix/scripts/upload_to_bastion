@@ -7,14 +7,19 @@ ssh "$HOST" "mkdir -p ~/event_generator/"
 
 PRODUCER_JAR="$PROJECT_ROOT/beam-applications-java/kafkaProducer/build/KafkaProducer.jar"
 REMOTE_PATH="~/event_generator"
-DATA_PATH="$PROJECT_ROOT/beam-applications-java/data/riot_events_TAXI_constant_rate_scenario.csv"
+SCENARIO_ONE="$PROJECT_ROOT/beam-applications-java/data/riot_events_TAXI_constant_rate_scenario.csv"
+SCENARIO_TWO="$PROJECT_ROOT/beam-applications-java/data/riot_events_TAXI_exponential_scenario.csv"
+SCENARIO_THREE="$PROJECT_ROOT/evaluation/riot_events_TAXI_15min_normalized.csv"
+
 
 echo "Copying $PRODUCER_JAR to $HOST:$REMOTE_PATH..."
 rsync -avz --checksum --progress "$PRODUCER_JAR" "$HOST:$REMOTE_PATH"
 
 echo "Copying data to $HOST:~/data/..."
 ssh "$HOST" "mkdir -p $REMOTE_PATH/data/"
-rsync -avz --checksum --progress "$DATA_PATH" "$HOST:$REMOTE_PATH/data/"
+rsync -avz --checksum --progress "$SCENARIO_ONE" "$HOST:$REMOTE_PATH/data/"
+rsync -avz --checksum --progress "$SCENARIO_TWO" "$HOST:$REMOTE_PATH/data/"
+rsync -avz --checksum --progress "$SCENARIO_THREE" "$HOST:$REMOTE_PATH/data/"
 
 echo "Copying flake.nix to $HOST:$REMOTE_PATH"
 rsync -avz --checksum --progress "$PROJECT_ROOT/flake.nix" "$HOST:$REMOTE_PATH"

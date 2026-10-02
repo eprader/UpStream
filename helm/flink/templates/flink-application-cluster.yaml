@@ -64,5 +64,6 @@ spec:
     args:
       # WARN:
       # Edit this to match the URL of the MongoDB Service.
-      # - "--databaseUrl=mongodb://adminuser:password123@mongodb-nodeport.default.svc.cluster.local:32000/"
+      # Required to deploy PRED and TRAIN
+      - "--databaseUrl=mongodb://adminuser:password123@mongodb-nodeport.default.svc.cluster.local:27017/"
       - "--experiRunId=TAXI"

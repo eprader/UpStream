@@ -115,3 +115,7 @@ kubectl get secret monitoring-grafana -o jsonpath="{.data.admin-user}" | base64 
 ```
 
 There are 2 dashboards as `.json` files stored in the [helm folder](./helm)
+
+### Event Generation
+To actually have events coming in to the Kafka topics, we need to generate Events.
+

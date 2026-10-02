@@ -1,3 +1,4 @@
+# generated using ChatGPT 4
 import argparse
 import os
 
@@ -101,19 +102,22 @@ def sample_timestamps_gaussian(
 
     return np.sort(timestamps)
 
-def sample_timestamps_exponential(row_count, scenario_duration_ms, scenario_target_file) -> NDArray:
+
+def sample_timestamps_exponential(
+    row_count, scenario_duration_ms, scenario_target_file
+) -> NDArray:
+    """Exponential rise for the first 10 minutes, followed by continuous
+    maximum load for the remaining 5 minutes (no decay phase)."""
     t0 = 0
-    t1 = scenario_duration_ms / 5       # 2.5 min
-    t2 = scenario_duration_ms - t1   # 12.5 min
-    t3 = scenario_duration_ms           # 15 min
+    t1 = scenario_duration_ms * (10 / 15)  # 10 min exponential rise
+    t3 = scenario_duration_ms  # 15 min total -> 5 min plateau at max load
 
     # Grid for piecewise PDF
     x = np.linspace(0, scenario_duration_ms, 20001)
     pdf = np.zeros_like(x, dtype=float)
 
-    mask_rise     = (x >= t0) & (x <= t1)
-    mask_plateau  = (x >  t1) & (x <= t2)
-    mask_fall     = (x >  t2) & (x <= t3)
+    mask_rise = (x >= t0) & (x <= t1)
+    mask_plateau = (x > t1) & (x <= t3)
 
     # Exponential rise (starting near 0 and rising to H at t1)
     tau_rise = (t1 - t0) / 3.0
@@ -121,9 +125,7 @@ def sample_timestamps_exponential(row_count, scenario_duration_ms, scenario_targ
     H = rise_raw[-1]  # peak value at t1
 
     pdf[mask_rise] = rise_raw
-    pdf[mask_plateau] = H                          # plateau at peak height
-    tau_fall = (t3 - t2) / 3.0
-    pdf[mask_fall] = H * np.exp(-(x[mask_fall] - t2) / tau_fall)  # decay from same height
+    pdf[mask_plateau] = H  # continuous maximum load for the remaining 5 min
 
     # Normalize PDF
     area = np.trapezoid(pdf, x)
@@ -136,29 +138,38 @@ def sample_timestamps_exponential(row_count, scenario_duration_ms, scenario_targ
     cdf = np.cumsum(pdf) * dx
     cdf /= cdf[-1]
 
-    # Inverse transform sampling
-    u = np.random.rand(row_count)
+    # Deterministic, evenly-spaced quantiles (no random noise) instead of
+    # random uniform draws — this makes every run reproducible and gives a
+    # perfectly smooth rise + flat max-load plateau with no jitter.
+    u = (np.arange(row_count) + 0.5) / row_count
     timestamps = np.interp(u, cdf, x)
 
     base, _ = os.path.splitext(scenario_target_file)
     plot_file = f"{base}_scenario.png"
     plt.hist(timestamps / 1000, bins=50, density=True, alpha=0.6)
+    plt.axvline(
+        t1 / 1000, color="red", linestyle="--", label="rise → max-load (10 min)"
+    )
     plt.xlabel("Time [seconds]")
     plt.ylabel("Density")
-    plt.title("Exponential rise → plateau (at peak) → exponential decay")
+    plt.title("Exponential rise (10 min) → continuous maximum load (5 min)")
+    plt.legend()
     plt.savefig(plot_file, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"Saved distribution plot at {plot_file}")
 
     # Event counts around key minutes (±0.5 min)
-    checks = [0.5, 2.5, 7.5, 12.5, 14.5]  # minutes
+    checks = [0.5, 2.5, 5, 7.5, 9.5, 10.5, 12.5, 14.5]  # minutes
     window = 60 * 1000  # 1-minute window in ms
     for m in checks:
         center = m * 60 * 1000
-        count = np.sum((timestamps >= center - window/2) & (timestamps < center + window/2))
+        count = np.sum(
+            (timestamps >= center - window / 2) & (timestamps < center + window / 2)
+        )
         print(f"Events around {m:>4} min (±0.5 min): {count}")
 
     return np.sort(timestamps)
+
 
 def sample_timestamps_constant_rate(
     row_count, scenario_duration_ms, scenario_target_file, events_per_second: float
@@ -178,11 +189,17 @@ def sample_timestamps_constant_rate(
             f"-> looping source data {loops}x"
         )
 
-    checks_min = [0.5, scenario_duration_ms / 2 / 60_000, scenario_duration_ms / 60_000 - 0.5]
+    checks_min = [
+        0.5,
+        scenario_duration_ms / 2 / 60_000,
+        scenario_duration_ms / 60_000 - 0.5,
+    ]
     window = 60_000
     for m in checks_min:
         center = m * 60_000
-        count = np.sum((timestamps >= center - window / 2) & (timestamps < center + window / 2))
+        count = np.sum(
+            (timestamps >= center - window / 2) & (timestamps < center + window / 2)
+        )
         print(f"Events around {m:>5.1f} min (±0.5 min): {count}")
 
     plt.hist(timestamps / 1000, bins=50, density=True, alpha=0.6, color="purple")
@@ -246,7 +263,10 @@ def main():
             )
         case "CONSTANT_RATE":
             timestamps, loops = sample_timestamps_constant_rate(
-                row_count, scenario_duration_ms, args.target_file, args.events_per_second
+                row_count,
+                scenario_duration_ms,
+                args.target_file,
+                args.events_per_second,
             )
         case _:
             print("No known scenario provided")

@@ -1,8 +1,6 @@
 import logging
 import time
-from datetime import datetime
 from math import ceil
-from typing import List
 
 import numpy as np
 from kubernetes import client, config
@@ -19,9 +17,8 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
-# TODO: Replace with kubernetes svc url
 prometheus = PrometheusConnect(url="http://localhost:9090", disable_ssl=True)
 
 
@@ -39,7 +36,6 @@ def get_flink_metric(query_str: str) -> float:
 
 
 def get_taskmanager_deployments():
-
     name_to_taskslots_map = {
         "flink-application-cluster-taskmanager": 2,
         "flink-application-cluster-taskmanager-medium": 8,
@@ -50,7 +46,7 @@ def get_taskmanager_deployments():
 
     apps_v1 = client.AppsV1Api()
 
-    logger.info("Fetching Task Manager deployments")
+    logger.debug("Fetching Task Manager deployments")
 
     k8s_deployments = apps_v1.list_namespaced_deployment(
         namespace="default", label_selector="component=taskmanager"
@@ -104,45 +100,57 @@ def _fetch_metrics_array() -> np.ndarray:
 
 
 def main():
-    sync_period_sec: int = 120
+    SYNC_PERIOD_SEC: int = 120
+    BACKPRESSURE_THRESHOLD = 0.1
 
     initial_metrics = _fetch_metrics_array()
-    logger.info(
-        f"Initial metrics at {datetime.now().isoformat()}: busy=%.4f idle=%.4f backpressure=%.4f",
+    logger.debug(
+        "Initial metrics: busy=%.4f idle=%.4f backpressure=%.4f",
         *initial_metrics,
     )
 
     controller = MPCController()
-    controller.initial_measurement(initial_metrics)
+    controller.initial_measurement(initial_metrics[:2])
 
     allocator: PodAllocator = PodAllocator(utilisation_factor=0.8)
 
-    taskmanager_deployments = get_taskmanager_deployments()
-    logger.info("Initial deployment configurations: %s", taskmanager_deployments)
-
     iteration = 0
     while True:
-        logger.debug(f"Sleeping for {sync_period_sec} seconds")
-        time.sleep(sync_period_sec)
+        if iteration > 0:
+            logger.debug(f"Sleeping for {SYNC_PERIOD_SEC} seconds")
+            time.sleep(SYNC_PERIOD_SEC)
+
         iteration += 1
         logger.debug(f"--- Sync iteration {iteration} ---")
 
-        metrics = _fetch_metrics_array()
-        scaling_factor = controller.measurement_step(metrics)
+        busy_time, idle_time, backpressure = _fetch_metrics_array()
+
+        taskmanager_deployments = get_taskmanager_deployments()
+        logger.info("Deployment configurations: %s", taskmanager_deployments)
 
         current_task_slot_count: int = sum(
             deployment.replica_count * deployment.number_of_taskslots
             for deployment in taskmanager_deployments
         )
-        # NOTE:
-        # We need to ensure the number of taskslots is at least 1.
-        # Otherwise the job will halt.
-        new_task_slot_count: int = ceil(current_task_slot_count * scaling_factor)
 
-        if new_task_slot_count < 1:
-            logger.warning(
-                "The predicted new number of task slots is below 1, keeping one replica active."
+        # Hard override: any backpressure immediate scale up proportional to the metric
+        # Backpressure will be between 0 and 100%
+        if backpressure > BACKPRESSURE_THRESHOLD:
+            scaling_factor = 1.0 + backpressure
+            new_task_slot_count = ceil(current_task_slot_count * scaling_factor)
+            logger.info(
+                "Backpressure override: backpressure=%.4f → scale_factor=%.4f",
+                backpressure,
+                scaling_factor,
             )
+        else:
+            # No backpressure — let MPC balance busy/idle
+            scaling_factor = controller.measurement_step(
+                np.array([busy_time, idle_time], dtype=np.float64)
+            )
+            new_task_slot_count = round(current_task_slot_count * scaling_factor)
+
+        new_task_slot_count = max(new_task_slot_count, 1)
 
         new_allocation = allocator.allocate_pods(
             max(new_task_slot_count, 1), taskmanager_deployments
@@ -151,7 +159,7 @@ def main():
         logger.info(
             f"Iteration {iteration} | scaling_factor={scaling_factor} | slots: {current_task_slot_count} → {new_task_slot_count}"
         )
-        logger.info(f"New deployment configureation: {new_allocation}")
+        logger.info(f"New deployment configuration: {new_allocation}")
 
         for deployment in new_allocation:
             scale_deployment(
