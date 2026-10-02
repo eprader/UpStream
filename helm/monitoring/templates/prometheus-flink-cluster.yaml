@@ -13,4 +13,9 @@ spec:
       release: monitoring
   podMetricsEndpoints:
     - port: metrics
-      interval: 1s
+      interval: 15s
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_ready]
+          regex: "true"
+          action: keep

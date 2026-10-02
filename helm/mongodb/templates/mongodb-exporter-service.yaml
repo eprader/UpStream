@@ -1,0 +1,16 @@
+{{- if .Values.mongodbExporter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-exporter
+  labels:
+    release: monitoring
+    app: mongodb-exporter
+spec:
+  selector:
+    app: mongodb-exporter
+  ports:
+    - name: metrics
+      port: 9216
+      targetPort: metrics
+{{- end }}

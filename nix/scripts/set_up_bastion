@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOST="jump"
+
+echo "Uploading files"
+upload_to_bastion
+echo "Installing nix"
+ssh "$HOST" "sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --no-daemon"
+ssh "$HOST" ". /home/cc/.nix-profile/etc/profile.d/nix.sh"
+echo "Enabling nix flakes"
+ssh "$HOST" "mkdir -p ~/.config/nix && echo 'experimental-features = nix-command flakes' > ~/.config/nix/nix.conf"
+echo "Installing Dev Shell dependencies"
+# INFO: ssh is a non interactive session to make nix available we need the bash pretext
+ssh "$HOST" "bash -l -c 'cd ~/event_generator && nix build .#devShells.x86_64-linux.default'"

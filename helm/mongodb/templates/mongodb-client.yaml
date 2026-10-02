@@ -18,6 +18,7 @@ spec:
       containers:
       - image: mongo
         name: mongo-client
+        command: ["sleep", "infinity"]
         env:
         - name: mongo-client_INITDB_ROOT_USERNAME
           value: 'dummy'

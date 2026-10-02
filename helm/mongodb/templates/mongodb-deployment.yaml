@@ -17,7 +17,9 @@ spec:
         app: mongo
     spec:
       containers:
-      - image: mongo
+      # INFO: MongoDB introduced a breaking change requiring a version pin here.
+      # https://www.mongodb.com/docs/manual/release-notes/8.2-compatibility/#driver-incompatibility
+      - image: mongo:6.0
         name: mongo
         args: ["--dbpath","/data/db"]
         livenessProbe:

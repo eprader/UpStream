@@ -7,7 +7,7 @@ ssh "$HOST" "mkdir -p ~/event_generator/"
 
 PRODUCER_JAR="$PROJECT_ROOT/beam-applications-java/kafkaProducer/build/KafkaProducer.jar"
 REMOTE_PATH="~/event_generator"
-DATA_PATH="$PROJECT_ROOT/beam-applications-java/data/riot_events_TAXI_exponential_scenario.csv"
+DATA_PATH="$PROJECT_ROOT/beam-applications-java/data/riot_events_TAXI_constant_rate_scenario.csv"
 
 echo "Copying $PRODUCER_JAR to $HOST:$REMOTE_PATH..."
 rsync -avz --checksum --progress "$PRODUCER_JAR" "$HOST:$REMOTE_PATH"

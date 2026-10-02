@@ -1,1 +1,14 @@
-enabled: true 
+enabled: true
+
+mongodbExporter:
+  enabled: true
+  image:
+    tag: "0.40"
+  mongodbHost: "mongodb-nodeport.default.svc.cluster.local"
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "50Mi"
+    limits:
+      cpu: "100m"
+      memory: "100Mi"

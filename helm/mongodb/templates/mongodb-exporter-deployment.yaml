@@ -1,0 +1,48 @@
+{{- if .Values.mongodbExporter.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    release: monitoring
+    app: mongodb-exporter
+  name: mongodb-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb-exporter
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        release: monitoring
+        app: mongodb-exporter
+    spec:
+      containers:
+        - name: mongodb-exporter
+          image: percona/mongodb_exporter:{{ .Values.mongodbExporter.image.tag | default "0.40" }}
+          args:
+            - --mongodb.uri=mongodb://$(MONGODB_USER):$(MONGODB_PASSWORD)@{{ .Values.mongodbExporter.mongodbHost | default "mongo" }}:27017/admin?authSource=admin
+            - --collect-all
+          env:
+            - name: MONGODB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-creds
+                  key: username
+            - name: MONGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-creds
+                  key: password
+          ports:
+            - name: metrics
+              containerPort: 9216
+          resources:
+            requests:
+              cpu: {{ .Values.mongodbExporter.resources.requests.cpu | default "50m" }}
+              memory: {{ .Values.mongodbExporter.resources.requests.memory | default "50Mi" }}
+            limits:
+              cpu: {{ .Values.mongodbExporter.resources.limits.cpu | default "100m" }}
+              memory: {{ .Values.mongodbExporter.resources.limits.memory | default "100Mi" }}
+{{- end }}

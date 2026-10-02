@@ -5,10 +5,14 @@
     nixpkgs.url = "github:nixos/nixpkgs";
   };
 
-  outputs = { nixpkgs, ... }:
+  outputs =
+    { nixpkgs, ... }:
     let
       system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
 
     in
     {
@@ -22,10 +26,14 @@
             kubectl
             kubernetes-helm
             gnused # INFO: Used in `fix_kubeconfig` utility.
+
+            jdk11 # used for event generator
+
+            uv
           ];
 
           shellHook = ''
-            export PROJECT_ROOT=$PWD
+            export PROJECT_ROOT=$(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
             export PS1="(nix-shell) $PS1" # NOTE: To communicate that a nix shell is active
             # NOTE:
             # To make the use of `ssh` with this projects custom config easier,

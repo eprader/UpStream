@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 
-from mpc_scaler_flink.pod import Pod, PodCapacity
+from mpc_scaler_flink.deployment import Deployment
 from mpc_scaler_flink.pod_allocator import PodAllocator
 
 # Assuming Pod and PodAllocator classes are already imported
@@ -27,13 +27,15 @@ from mpc_scaler_flink.pod_allocator import PodAllocator
     ],
 )
 def test_allocate_pods_with_utilisation_0_8(value_to_allocate, expected_allocation):
-    pods: List[Pod] = [Pod(capacity, 0) for capacity in PodCapacity]
+    pods: List[Deployment] = [
+        Deployment(capacity, 0) for capacity in ["Small", "Medium", "Large"]
+    ]
     allocator: PodAllocator = PodAllocator(0.8)
 
     result = allocator.allocate_pods(value_to_allocate, pods)
 
-    sorted_result: List[Pod] = sorted(
-        result, key=lambda p: p.task_slot_capacity.value, reverse=True
+    sorted_result: List[Deployment] = sorted(
+        result, key=lambda p: p.number_of_taskslots.value, reverse=True
     )
     result_replica_counts = [pod.replica_count for pod in sorted_result]
 
@@ -59,13 +61,15 @@ def test_allocate_pods_with_utilisation_0_8(value_to_allocate, expected_allocati
     ],
 )
 def test_allocate_pods_with_utilisation_1(value_to_allocate, expected_allocation):
-    pods: List[Pod] = [Pod(capacity, 0) for capacity in PodCapacity]
+    pods: List[Deployment] = [
+        Deployment(capacity, 0) for capacity in ["Small", "Medium", "Large"]
+    ]
     allocator: PodAllocator = PodAllocator(1)
 
     result = allocator.allocate_pods(value_to_allocate, pods)
 
-    sorted_result: List[Pod] = sorted(
-        result, key=lambda p: p.task_slot_capacity.value, reverse=True
+    sorted_result: List[Deployment] = sorted(
+        result, key=lambda p: p.number_of_taskslots.value, reverse=True
     )
     result_replica_counts = [pod.replica_count for pod in sorted_result]
 

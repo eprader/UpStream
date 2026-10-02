@@ -12,23 +12,20 @@ spec:
 
     metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
     metrics.reporter.prom.port: "9249"
+    metrics.latency.interval: "5000"        # milliseconds, 0 = disabled
+    metrics.latency.granularity: "single" # single | operator | subtask
 
     scheduler-mode: reactive
+    # BUG:
+    # Enabling checkpointing will lead to source tasks entering `FINISHED` state on rescale events.
+    # Therefore we do not specify checkpointing since it is disabled by default.
+    # execution.checkpointing.interval: "10s"
 
     # INFO:
     # The use of savepointing currently appears to break reactive mode.
     # Therefore we removed savepointing and have to set the restart strategy manually
     # since the default is `none`.
     restart-strategy.type: exponential-delay
-
-    # job.autoscaler.stabilization.interval: 1m
-    # job.autoscaler.metrics.window: 5m
-    # job.autoscaler.target.utilization: "0.8"
-    # job.autoscaler.target.utilization.boundary: "0.2"
-    # job.autoscaler.restart.time: 2m
-    # job.autoscaler.catch-up.duration: 5m
-    # job.autoscaler.catch-up.duration: "0" 
-    # job.autoscaler.stabilization.interval: "30s"
 
   serviceAccount: flink
   podTemplate:
@@ -54,20 +51,18 @@ spec:
             type: DirectoryOrCreate
   jobManager:
     resource:
-      memory: "4096m"
-      cpu: 2
+      memory: "8g"
+      cpu: 4
   taskManager:
     resource:
-      memory: "2048m" 
+      memory: "2048m"
       cpu: 1
   job:
     jarURI: local:///flink-jobs/FlinkJob.jar
-    parallelism: 6
+    parallelism: 128
     state: running
     args:
-    # WARN:
-    # Edit this to match the URL of the MongoDB Service .
-      # - "--databaseUrl=mongodb://adminuser:password123@10.52.3.210:32000/"
+      # WARN:
+      # Edit this to match the URL of the MongoDB Service.
+      # - "--databaseUrl=mongodb://adminuser:password123@mongodb-nodeport.default.svc.cluster.local:32000/"
       - "--experiRunId=TAXI"
-
-  mode: standalone

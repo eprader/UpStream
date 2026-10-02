@@ -1,25 +1,27 @@
 from typing import List
 
-from .pod import Pod
+from .deployment import Deployment
 
 
 class PodAllocator:
     def __init__(self, utilisation_factor: float = 1.0):
         self.utilisation_factor = utilisation_factor
 
-    def allocate_pods(self, number_of_slots: int, pods: List[Pod]) -> List[Pod]:
-        allocated_pods: List[Pod] = []
-        sorted_pods: List[Pod] = sorted(
-            pods, key=lambda p: p.task_slot_capacity.value, reverse=True
+    def allocate_pods(
+        self, number_of_slots: int, pods: List[Deployment]
+    ) -> List[Deployment]:
+        allocated_pods: List[Deployment] = []
+        sorted_pods: List[Deployment] = sorted(
+            pods, key=lambda p: p.number_of_taskslots, reverse=True
         )
 
         for pod in sorted_pods:
             pod.replica_count = 0
 
             while number_of_slots >= round(
-                pod.task_slot_capacity.value * self.utilisation_factor
+                pod.number_of_taskslots * self.utilisation_factor
             ):
-                number_of_slots -= pod.task_slot_capacity.value
+                number_of_slots -= pod.number_of_taskslots
                 pod.replica_count += 1
 
             allocated_pods.append(pod)

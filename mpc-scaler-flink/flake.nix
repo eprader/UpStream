@@ -5,7 +5,8 @@
     nixpkgs.url = "github:nixos/nixpkgs";
   };
 
-  outputs = { nixpkgs, ... }:
+  outputs =
+    { nixpkgs, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
@@ -30,13 +31,13 @@
             # In Nix, these libraries do not live in the expected directories.
             # Therefore, if one wants to make these libraries available one needs to add them manually.
             LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
-              pkgs.stdenv.cc.cc.lib
+              pkgs.gcc14.cc.lib
               pkgs.libz
             ];
           };
 
           shellHook = ''
-            export KUBECONFIG=$(pwd)
+            export KUBECONFIG=$PWD/../.kube/config
           '';
         };
       };
